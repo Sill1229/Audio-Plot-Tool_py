@@ -1,0 +1,8 @@
+#!/bin/bash
+APP_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+osascript <<APPLESCRIPT
+tell application "Terminal"
+    activate
+    do script "bash '${APP_DIR}/install_and_run.sh'"
+end tell
+APPLESCRIPT
