@@ -6,14 +6,21 @@
 
 ## 首次运行注意事项（macOS）
 
-macOS 会拦截从网络下载的未签名应用，**首次使用前必须在终端运行以下两条命令**解除限制：
+macOS 会拦截从网络下载的未签名应用，**首次使用前必须在终端运行以下两条命令**解除限制（路径替换为你实际的解压路径）：
 
 ```bash
-xattr -rd com.apple.quarantine "/Users/sly/Downloads/AudioPlotTool_py/AudioPlotTool.app"
-chmod +x "/Users/sly/Downloads/AudioPlotTool_py/AudioPlotTool.app/Contents/MacOS/AudioPlotTool"
+xattr -rd com.apple.quarantine "/你的路径/AudioPlotTool_py/AudioPlotTool.app"
+chmod +x "/你的路径/AudioPlotTool_py/AudioPlotTool.app/Contents/MacOS/AudioPlotTool"
 ```
 
-> ⚠️ 路径请替换为你实际的解压路径。解除后**右键 → 打开**，弹窗点「打开」即可。之后每次直接双击运行。
+例如放在桌面的 `Audio Tools` 文件夹里：
+
+```bash
+xattr -rd com.apple.quarantine "/Users/你的用户名/Desktop/Audio Tools/AudioPlotTool_py/AudioPlotTool.app"
+chmod +x "/Users/你的用户名/Desktop/Audio Tools/AudioPlotTool_py/AudioPlotTool.app/Contents/MacOS/AudioPlotTool"
+```
+
+> 解除后**右键 → 打开**，弹窗点「打开」即可。之后每次直接双击运行。
 
 ---
 
