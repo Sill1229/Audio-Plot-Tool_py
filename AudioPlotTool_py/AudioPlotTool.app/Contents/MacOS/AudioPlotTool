@@ -1,0 +1,11 @@
+#!/bin/bash
+# 找到工程根目录（.app 上级目录）
+APP_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+
+# 用 Terminal 打开并执行 install_and_run.sh
+osascript <<APPLESCRIPT
+tell application "Terminal"
+    activate
+    do script "bash '${APP_DIR}/install_and_run.sh'"
+end tell
+APPLESCRIPT
