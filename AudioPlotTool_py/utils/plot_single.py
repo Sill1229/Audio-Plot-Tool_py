@@ -101,7 +101,7 @@ def _draw_metric(data: dict, metric: str, use_harman: bool):
     # Y 轴
     y_max = auto_ymax(all_y_max, is_fr)
     ax.set_ylim(y_min, y_max)
-    ax.set_ylabel("SPL (dB)", fontsize=13)
+    ax.set_ylabel("SPL (dB)" if is_fr else "Level (%)", fontsize=13)
     # X 轴
     apply_log_xaxis(ax, x_lim)
 
