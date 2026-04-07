@@ -55,6 +55,24 @@ def select_best_row(freq: np.ndarray, data: np.ndarray,
     return idx, float(means[idx])
 
 
+def _safe_row(data: np.ndarray | None, idx: int) -> np.ndarray | None:
+    """安全取 data 的第 idx 行；data 为 None 或越界时返回 None。"""
+    if data is None or idx >= data.shape[0]:
+        return None
+    return data[idx]
+
+
+def select_max_row(freq: np.ndarray, data: np.ndarray,
+                   f_low: float, f_high: float) -> tuple[int, float]:
+    """找出频段均值最大的行（最大音量），返回 (行索引, 实际均值)。"""
+    means = np.array([calc_band_mean(freq, data[r], f_low, f_high)
+                      for r in range(data.shape[0])])
+    means_safe = means.copy()
+    means_safe[np.isnan(means_safe)] = -np.inf
+    idx = int(np.argmax(means_safe))
+    return idx, float(means[idx])
+
+
 # ── 单设备模式 ───────────────────────────────────────────
 
 def build_single_device(file_path: str, sheet_names: dict,
@@ -73,6 +91,7 @@ def build_single_device(file_path: str, sheet_names: dict,
 
     freq_thd_l, dat_thd_l = read_ap_sheet(file_path, sheet_names["THD_L"])
     freq_rb_l,  dat_rb_l  = read_ap_sheet(file_path, sheet_names["RB_L"])
+    freq_leak_l, dat_leak_l = read_ap_sheet(file_path, sheet_names["Leakage_mic2"])
 
     freq_fr_r = freq_thd_r = freq_rb_r = None
     dat_fr_r  = dat_thd_r  = dat_rb_r  = None
@@ -101,23 +120,30 @@ def build_single_device(file_path: str, sheet_names: dict,
         "show_both":   show_both,
         "sort_idx":    sort_idx,       # numpy array，升序
         "spl_sorted":  spl_sorted,
-        "freq_fr_l":   freq_fr_l,  "dat_fr_l":  dat_fr_l,
-        "freq_thd_l":  freq_thd_l, "dat_thd_l": dat_thd_l,
-        "freq_rb_l":   freq_rb_l,  "dat_rb_l":  dat_rb_l,
-        "freq_fr_r":   freq_fr_r,  "dat_fr_r":  dat_fr_r,
-        "freq_thd_r":  freq_thd_r, "dat_thd_r": dat_thd_r,
-        "freq_rb_r":   freq_rb_r,  "dat_rb_r":  dat_rb_r,
+        "freq_fr_l":   freq_fr_l,   "dat_fr_l":   dat_fr_l,
+        "freq_thd_l":  freq_thd_l,  "dat_thd_l":  dat_thd_l,
+        "freq_rb_l":   freq_rb_l,   "dat_rb_l":   dat_rb_l,
+        "freq_fr_r":   freq_fr_r,   "dat_fr_r":   dat_fr_r,
+        "freq_thd_r":  freq_thd_r,  "dat_thd_r":  dat_thd_r,
+        "freq_rb_r":   freq_rb_r,   "dat_rb_r":   dat_rb_r,
+        "freq_leak_l": freq_leak_l,  "dat_leak_l": dat_leak_l,
     }
 
 
 # ── 多设备模式 ───────────────────────────────────────────
 
 def build_multi_device(file_list: list[str],
-                       sheet_names: dict) -> list[dict]:
+                       sheet_names: dict,
+                       use_max_volume: bool = False) -> list[dict]:
     """
-    每个 Excel 取最接近 75 dB SPL 的行（L 声道优先）。
+    每个 Excel 取代表行（L 声道优先）。
+    use_max_volume=True  → 取最大音量行
+    use_max_volume=False → 取最接近 75 dB SPL 的行（默认）
     返回项目字典列表。
     """
+    mode_label = "最大音量" if use_max_volume else "75 dB SPL 参考"
+    print(f"\n音量选取模式：{mode_label}")
+
     projects = []
 
     for i, file_path in enumerate(file_list):
@@ -130,22 +156,28 @@ def build_multi_device(file_list: list[str],
             print("  [警告] 缺少 FR 数据，已跳过。")
             continue
 
-        proj_name       = get_project_name(file_path)
-        row_idx, ref_spl = select_best_row(freq_fr, dat_fr,
-                                           BAND_LOW, BAND_HIGH, TARGET_SPL)
+        proj_name = get_project_name(file_path)
+
+        if use_max_volume:
+            row_idx, ref_spl = select_max_row(freq_fr, dat_fr,
+                                              BAND_LOW, BAND_HIGH)
+        else:
+            row_idx, ref_spl = select_best_row(freq_fr, dat_fr,
+                                               BAND_LOW, BAND_HIGH, TARGET_SPL)
 
         print(f"  项目：{proj_name} | 声道：{chan} | "
               f"行：{row_idx} | 参考声压：{ref_spl:.1f} dB SPL")
+
+        # 漏音图强制使用最大音量行
+        max_row_idx, max_spl = select_max_row(freq_fr, dat_fr,
+                                              BAND_LOW, BAND_HIGH)
 
         freq_thd, dat_thd, _ = read_channel(
             file_path, sheet_names["THD_L"], sheet_names["THD_R"])
         freq_rb,  dat_rb,  _ = read_channel(
             file_path, sheet_names["RB_L"],  sheet_names["RB_R"])
-
-        def safe_row(data, idx):
-            if data is None or idx >= data.shape[0]:
-                return None
-            return data[idx]
+        freq_leak, dat_leak = read_ap_sheet(
+            file_path, sheet_names["Leakage_mic2"])
 
         projects.append({
             "name":      proj_name,
@@ -153,9 +185,12 @@ def build_multi_device(file_list: list[str],
             "channel":   chan,
             "row_idx":   row_idx,
             "ref_spl":   ref_spl,
-            "freq_fr":   freq_fr,   "data_fr":  safe_row(dat_fr,  row_idx),
-            "freq_thd":  freq_thd,  "data_thd": safe_row(dat_thd, row_idx),
-            "freq_rb":   freq_rb,   "data_rb":  safe_row(dat_rb,  row_idx),
+            "freq_fr":   freq_fr,    "data_fr":      _safe_row(dat_fr,   row_idx),
+            "freq_thd":  freq_thd,   "data_thd":     _safe_row(dat_thd,  row_idx),
+            "freq_rb":   freq_rb,    "data_rb":      _safe_row(dat_rb,   row_idx),
+            "freq_leak": freq_leak,  "data_leak":    _safe_row(dat_leak, max_row_idx),
+            "data_fr_max": _safe_row(dat_fr, max_row_idx),
+            "max_spl":   max_spl,
         })
 
     return projects

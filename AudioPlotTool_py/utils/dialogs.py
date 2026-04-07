@@ -99,3 +99,15 @@ def ask_normalize() -> bool:
                  "否 → 保持真实响度差异")
     print(f"已选择：{'归一化响度' if val else '保持真实响度'}。")
     return val
+
+
+def ask_volume_mode() -> bool:
+    """返回 True = 使用最大音量，False = 使用最接近 75 dB SPL 的档位。"""
+    val = _yesno("音量选取模式",
+                 "选择每台设备的绘图档位：\n\n"
+                 "是 → 最大音量（所有 sweep 中最高声压）\n"
+                 "否 → 75 dB SPL 参考（默认）",
+                 default_yes=False)
+    label = "最大音量" if val else "75 dB SPL 参考"
+    print(f"已选择：{label}。")
+    return val

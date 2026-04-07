@@ -14,21 +14,27 @@ from typing import Optional
 
 # ── Sheet 名称定义 ────────────────────────────────────────
 SHEET_NAMES = {
-    "FR_L":  "Freqresp -ear L",
-    "FR_R":  "Freqresp -ear R",
-    "THD_L": "THD 2-5 -ear L",
-    "THD_R": "THD 2-5 -ear R",
-    "RB_L":  "Rub&Buzz Harmonic 10-35 -ear L",
-    "RB_R":  "Rub&Buzz Harmonic 10-35 -ear R",
+    "FR_L":          "Freqresp -ear L",
+    "FR_R":          "Freqresp -ear R",
+    "THD_L":         "THD 2-5 -ear L",
+    "THD_R":         "THD 2-5 -ear R",
+    "RB_L":          "Rub&Buzz Harmonic 10-35 -ear L",
+    "RB_R":          "Rub&Buzz Harmonic 10-35 -ear R",
+    "Leakage_mic2":  "Freqresp -mic 2",
 }
 
 
 def get_sheet_names(file_path: str) -> list[str]:
     """返回 Excel 文件中所有 sheet 名称。"""
-    wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
-    names = wb.sheetnames
-    wb.close()
-    return names
+    try:
+        wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+        try:
+            return list(wb.sheetnames)
+        finally:
+            wb.close()
+    except Exception as e:
+        print(f"  [警告] 无法读取 sheet 列表：{file_path}  ({e})")
+        return []
 
 
 def read_ap_sheet(file_path: str, sheet_name: str
@@ -45,13 +51,14 @@ def read_ap_sheet(file_path: str, sheet_name: str
         print(f"  [警告] 无法打开文件：{file_path}  ({e})")
         return None, None
 
-    if sheet_name not in wb.sheetnames:
-        wb.close()
-        return None, None
+    try:
+        if sheet_name not in wb.sheetnames:
+            return None, None
 
-    ws   = wb[sheet_name]
-    rows = list(ws.iter_rows(values_only=True))
-    wb.close()
+        ws   = wb[sheet_name]
+        rows = list(ws.iter_rows(values_only=True))
+    finally:
+        wb.close()
 
     if len(rows) < 2:
         return None, None
@@ -59,20 +66,23 @@ def read_ap_sheet(file_path: str, sheet_name: str
     header = rows[0]
 
     # 定位数据起始列：找 'Hz' 标签，数据列 = Hz列 + 2
-    data_col = 5   # 默认 index 5（第6列）
+    data_col: Optional[int] = None
     for c, val in enumerate(header):
         if isinstance(val, str) and val.strip().upper() == "HZ":
             data_col = c + 2
             break
 
-    # 频率轴：第1行从 data_col 起
+    if data_col is None:
+        print(f"  [警告] sheet '{sheet_name}' 中未找到 'Hz' 列标签，"
+              f"无法确定数据起始列，跳过。")
+        return None, None
+
+    # 频率轴：第1行从 data_col 起（跳过 None，兼容合并单元格）
     freq_vals = []
     for v in header[data_col:]:
         if isinstance(v, (int, float)) and v is not None:
             freq_vals.append(float(v))
-        elif v is None:
-            break
-        # 跳过非数值
+        # None 或非数值均跳过（合并单元格可能产生 None 间隙）
 
     if not freq_vals:
         return None, None

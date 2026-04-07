@@ -40,6 +40,8 @@ def load_harman(script_dir: str) -> tuple[np.ndarray | None, np.ndarray | None]:
     elif "Freq" in keys and "SPL" in keys:
         hf, hs = H["Freq"].flatten().astype(float), H["SPL"].flatten().astype(float)
     elif len(keys) >= 2:
+        print(f"  [提示] Harmancurve.mat 字段名未识别，"
+              f"使用前两个字段：{keys[0]!r}（频率）、{keys[1]!r}（SPL），请核查是否正确。")
         hf = H[keys[0]].flatten().astype(float)
         hs = H[keys[1]].flatten().astype(float)
     else:

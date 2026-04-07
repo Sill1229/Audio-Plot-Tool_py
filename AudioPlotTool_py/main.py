@@ -10,13 +10,18 @@ AudioPlotTool  –  主入口
 import sys
 import os
 import matplotlib
-matplotlib.use("TkAgg")          # macOS / Windows 均可用
+try:
+    matplotlib.use("TkAgg")
+    import tkinter as _tk_test   # 验证 tkinter 可用
+    del _tk_test
+except ImportError:
+    matplotlib.use("Agg")        # 无 Tk 环境时降级到非交互后端
 import matplotlib.pyplot as plt
 
 # 把 utils 加入搜索路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "utils"))
 
-from dialogs          import ask_files, ask_export_png, ask_harman, ask_channel_mode, ask_normalize
+from dialogs          import ask_files, ask_export_png, ask_harman, ask_channel_mode, ask_normalize, ask_volume_mode
 from reader           import read_ap_sheet, SHEET_NAMES
 from project_builder  import build_single_device, build_multi_device
 from plot_single      import plot_single_device
@@ -49,9 +54,10 @@ def main():
         plot_single_device(data, use_harman)
 
     else:
-        show_both  = False
-        normalize  = ask_normalize()
-        projects   = build_multi_device(file_list, SHEET_NAMES)
+        show_both      = False
+        normalize      = ask_normalize()
+        use_max_volume = ask_volume_mode()
+        projects       = build_multi_device(file_list, SHEET_NAMES, use_max_volume)
         if not projects:
             print("没有找到任何可用的项目数据，请检查 Excel 文件格式。")
             return

@@ -28,7 +28,9 @@ def _setup_chinese_font():
         if name in available:
             plt.rcParams["font.family"] = name
             return
-    # 兜底：不报错，只是中文可能显示为方块
+    # 兜底：中文可能显示为方块，给出一次提示
+    print("  [提示] 未找到中文字体，汉字可能显示为方块。"
+          "可安装 PingFang SC / Microsoft YaHei 等字体后重试。")
     plt.rcParams["axes.unicode_minus"] = False
 
 _setup_chinese_font()
@@ -62,6 +64,15 @@ def warm_cold_colors(n: int) -> list[tuple]:
         r, g, b = colorsys.hsv_to_rgb(h, 0.85, 0.92)
         colors.append((r, g, b))
     return colors
+
+
+# ── Metric 配置（供 plot_single / plot_compare 共用）─────────
+METRIC_CFG = {
+    "FR":      {"title": "Frequency Response",          "x_lim": (50, 20000),   "y_min": 20,  "is_fr": True},
+    "THD":     {"title": "THD",                         "x_lim": (100, 10000),  "y_min": 0,   "is_fr": False},
+    "RB":      {"title": "Rub & Buzz",                  "x_lim": (100, 10000),  "y_min": 0,   "is_fr": False},
+    "LEAKAGE": {"title": "Leakage Control (Isolation)",  "x_lim": (500, 5000),   "y_min": 0,   "is_fr": False},
+}
 
 
 # ── 坐标轴格式 ────────────────────────────────────────────
@@ -111,7 +122,8 @@ def make_figure(title: str) -> tuple:
     """创建标准 figure 和 axes。"""
     fig, ax = plt.subplots(figsize=(12, 6.5))
     fig.patch.set_facecolor("white")
-    fig.canvas.manager.set_window_title(title)
+    if hasattr(fig.canvas, "manager") and fig.canvas.manager is not None:
+        fig.canvas.manager.set_window_title(title)
     ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
     return fig, ax
 

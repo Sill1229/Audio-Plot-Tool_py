@@ -31,6 +31,7 @@ def export_all_figures(file_list: list[str]):
     print(f"\n导出目录：{out_dir}")
 
     figs = [plt.figure(num) for num in plt.get_fignums()]
+    exported = 0
     for fig in figs:
         # 取标题
         axes = fig.get_axes()
@@ -40,18 +41,26 @@ def export_all_figures(file_list: list[str]):
             if t:
                 title = t
         if not title:
-            title = fig.canvas.manager.get_window_title() if hasattr(
-                fig.canvas, "manager") else f"Figure_{fig.number}"
+            if hasattr(fig.canvas, "manager") and fig.canvas.manager is not None:
+                title = fig.canvas.manager.get_window_title()
+            else:
+                title = f"Figure_{fig.number}"
 
-        fname   = sanitize(title) + ".png"
-        out_path = os.path.join(out_dir, fname)
+        # 文件名去重：已存在时加数字后缀
+        stem     = sanitize(title)
+        out_path = os.path.join(out_dir, stem + ".png")
+        counter  = 1
+        while os.path.exists(out_path):
+            out_path = os.path.join(out_dir, f"{stem}_{counter}.png")
+            counter += 1
 
-        # 临时放大到接近全屏
-        orig_size = fig.get_size_inches()
-        fig.set_size_inches(18, 10)
-        fig.savefig(out_path, dpi=150, bbox_inches="tight",
-                    facecolor="white")
-        fig.set_size_inches(*orig_size)
-        print(f"  已导出：{out_path}")
+        # 用高 DPI 导出，不修改已显示窗口的尺寸
+        try:
+            fig.savefig(out_path, dpi=200, bbox_inches="tight",
+                        facecolor="white")
+            print(f"  已导出：{out_path}")
+            exported += 1
+        except Exception as e:
+            print(f"  [警告] 导出失败（{out_path}）：{e}")
 
-    print(f"全部 {len(figs)} 张图导出完成。")
+    print(f"全部 {exported}/{len(figs)} 张图导出完成。")
