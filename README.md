@@ -1,6 +1,11 @@
 # AudioPlotTool  –  Python 版
 
-多设备音频测试对比工具，Python 重构版。
+多设备音频测试对比工具，Python 重构版。包含两个独立工具：
+
+| 工具 | 说明 |
+|---|---|
+| `AudioPlotTool`（主工具） | 多设备 / 多音量频响对比，含 THD / Rub&Buzz / Leakage |
+| `AR_Glasses_FR_Plot Compare Harman.py` | AR 眼镜频响 vs 哈曼目标曲线，输出概览图 + 调音参考图 |
 
 ---
 
@@ -44,11 +49,12 @@ bash /path/to/AudioPlotTool_py/install_and_run.sh
 
 ```
 AudioPlotTool_py/
-├── AudioPlotTool.app       ← 双击启动（macOS）
-├── install_and_run.sh      ← 终端启动脚本
-├── main.py                 ← 主入口
-├── requirements.txt        ← Python 依赖
-├── Harmancurve.mat         ← Harman 参考曲线（自行放入）
+├── AudioPlotTool.app                        ← 双击启动（macOS）
+├── AR_Glasses_FR_Plot Compare Harman.py     ← AR 眼镜调音分析工具
+├── install_and_run.sh                       ← 终端启动脚本
+├── main.py                                  ← 主入口
+├── requirements.txt                         ← Python 依赖
+├── Harmancurve.mat                          ← Harman 参考曲线（内嵌于 AR 工具，此处备用）
 └── utils/
     ├── dialogs.py          弹窗交互（tkinter）
     ├── reader.py           Excel 读取
@@ -88,9 +94,31 @@ AudioPlotTool_py/
 
 ---
 
-## 两种模式
+## AudioPlotTool 两种模式
 
 | 选择文件数 | 模式 |
 |---|---|
 | 1 个 | 单设备多音量：所有 sweep 全部画出，冷暖色区分音量高低 |
 | 2+ 个 | 多设备对比：每台设备取最接近 75 dB SPL 的档位，可选响度归一化 |
+
+---
+
+## AR_Glasses_FR_Plot Compare Harman.py
+
+AR 眼镜扬声器频响分析工具，独立运行，无需其他模块。
+
+**用法：**
+```bash
+python3 "AR_Glasses_FR_Plot Compare Harman.py"
+```
+
+运行后弹窗选择 AP 导出的 Excel 文件，自动输出两张图到 `/Users/sly/Desktop/Audio Test Export/`：
+
+| 输出文件 | 内容 |
+|---|---|
+| `文件名_overview.png` | H_glass(f) 与哈曼目标曲线概览（50Hz–20kHz） |
+| `文件名_tuning.png` | 调音参考图 ΔH(f)（200Hz–20kHz，1 dB 刻度，正负填色） |
+
+**选行逻辑：** 读取 `Freqresp -ear L` sheet，取 1kHz 处 SPL 最接近 75 dBSPL 的那行 sweep。
+
+**依赖：** `matplotlib` / `numpy` / `openpyxl`（哈曼曲线已内嵌，无需 `.mat` 文件）
